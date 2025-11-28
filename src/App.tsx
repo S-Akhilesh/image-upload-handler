@@ -15,6 +15,7 @@ function App() {
     appendSelections,
     handleUpload,
     handleRetry,
+    handleDelete,
     handleReset,
   } = useCloudinaryUpload();
 
@@ -45,6 +46,7 @@ function App() {
           onUpload={handleUpload}
           onRetry={handleRetry}
           onReset={handleReset}
+          onDelete={handleDelete}
         />
       </main>
     </ErrorBoundary>

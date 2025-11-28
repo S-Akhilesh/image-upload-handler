@@ -7,6 +7,14 @@ import * as types from './useCloudinaryUpload.types';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
+const removeProperty = <T extends Record<string, unknown>>(
+  obj: T,
+  key: string
+): Omit<T, string> => {
+  const { [key]: _, ...rest } = obj;
+  return rest;
+};
+
 export function useCloudinaryUpload() {
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
   const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
@@ -271,6 +279,20 @@ export function useCloudinaryUpload() {
     }
   }, [selections, uploadStatuses, uploadResults, uploadFiles]);
 
+  const handleDelete = useCallback((id: string) => {
+    setSelections((current) => {
+      const selection = current.find((s) => s.id === id);
+      if (selection) {
+        URL.revokeObjectURL(selection.previewUrl);
+      }
+      return current.filter((s) => s.id !== id);
+    });
+    setUploadResults((current) => current.filter((r) => r.id !== id));
+    setUploadStatuses((current) => removeProperty(current, id));
+    setUploadProgress((current) => removeProperty(current, id));
+    setUploadErrors((current) => removeProperty(current, id));
+  }, []);
+
   const handleReset = useCallback(() => {
     selections.forEach(({ previewUrl }) => {
       URL.revokeObjectURL(previewUrl);
@@ -298,6 +320,7 @@ export function useCloudinaryUpload() {
     appendSelections,
     handleUpload,
     handleRetry,
+    handleDelete,
     handleReset,
   };
 }

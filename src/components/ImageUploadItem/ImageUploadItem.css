@@ -65,6 +65,41 @@
   height: 20px;
 }
 
+.delete-button {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 200ms ease;
+  color: #ffffff;
+}
+
+.delete-button:hover {
+  background: rgba(239, 68, 68, 0.9);
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+.delete-button:active {
+  transform: scale(0.95);
+}
+
+.delete-icon {
+  width: 18px;
+  height: 18px;
+  color: currentColor;
+}
+
 @keyframes statusBadgeAppear {
   0% {
     transform: scale(0) rotate(-180deg);

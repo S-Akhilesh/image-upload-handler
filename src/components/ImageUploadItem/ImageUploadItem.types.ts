@@ -7,4 +7,5 @@ export type ImageUploadItemProps = {
   uploadProgress?: number;
   errorMessage?: string;
   uploadedUrl?: string;
+  onDelete?: () => void;
 };

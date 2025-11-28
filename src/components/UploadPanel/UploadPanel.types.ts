@@ -21,4 +21,5 @@ export type UploadPanelProps = {
   onUpload: () => void;
   onRetry: () => void;
   onReset: () => void;
+  onDelete: (id: string) => void;
 };
