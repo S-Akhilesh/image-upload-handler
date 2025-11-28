@@ -14,6 +14,7 @@ function App() {
     handleFileChange,
     appendSelections,
     handleUpload,
+    handleRetry,
     handleReset,
   } = useCloudinaryUpload();
 
@@ -41,6 +42,7 @@ function App() {
         uploadErrors={uploadErrors}
         onBrowseChange={handleFileChange}
         onUpload={handleUpload}
+        onRetry={handleRetry}
         onReset={handleReset}
       />
     </main>

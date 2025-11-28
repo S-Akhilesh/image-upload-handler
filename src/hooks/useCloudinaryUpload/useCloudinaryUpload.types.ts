@@ -23,3 +23,5 @@ export type UploadedImage = {
   image: CloudinaryImage;
   result: CompletedUpload;
 };
+
+export type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';

@@ -19,5 +19,6 @@ export type UploadPanelProps = {
   uploadErrors: Record<string, string>;
   onBrowseChange: ChangeEventHandler<HTMLInputElement>;
   onUpload: () => void;
+  onRetry: () => void;
   onReset: () => void;
 };
