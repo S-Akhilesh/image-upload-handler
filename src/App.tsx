@@ -1,7 +1,12 @@
 import './App.css';
+import { Hero } from './components';
 
 function App() {
-  return <>Hello World</>;
+  return (
+    <main className='app'>
+      <Hero />
+    </main>
+  );
 }
 
 export default App;
