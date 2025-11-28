@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { Cloudinary } from '@cloudinary/url-gen';
+import axios from 'axios';
 import { formatFileSize } from '../../utils/formatFileSize';
 import * as types from './useCloudinaryUpload.types';
 
@@ -105,6 +106,91 @@ export function useCloudinaryUpload() {
     [appendSelections]
   );
 
+  const uploadFile = useCallback(
+    async (file: File, id: string): Promise<types.CompletedUpload> => {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', uploadPreset!);
+
+      const response = await axios.post<
+        types.UploadResponse & { error?: { message: string } }
+      >(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, formData, {
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percentComplete = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            setUploadProgress((current) => ({
+              ...current,
+              [id]: percentComplete,
+            }));
+          }
+        },
+      });
+
+      setUploadProgress((current) => ({ ...current, [id]: 100 }));
+
+      const data = response.data;
+
+      if (data.error) {
+        throw new Error(
+          data.error.message ?? 'Upload failed. Please try again.'
+        );
+      }
+
+      const result = { ...data, id };
+
+      setUploadStatuses((current) => ({
+        ...current,
+        [id]: 'success',
+      }));
+      setUploadResults((current) => [...current, result]);
+
+      return result;
+    },
+    [cloudName, uploadPreset]
+  );
+
+  const uploadFiles = useCallback(
+    async (filesToUpload: types.SelectedUpload[]) => {
+      const successful: types.CompletedUpload[] = [];
+      let failedCount = 0;
+
+      await Promise.allSettled(
+        filesToUpload.map(async ({ file, id }) => {
+          try {
+            const result = await uploadFile(file, id);
+            successful.push(result);
+            return result;
+          } catch (error) {
+            const errorMessage =
+              axios.isAxiosError(error) && error.response?.data?.error?.message
+                ? error.response.data.error.message
+                : error instanceof Error
+                ? error.message
+                : 'Upload failed. Please try again.';
+            setUploadStatuses((current) => ({
+              ...current,
+              [id]: 'error',
+            }));
+            setUploadErrors((current) => ({
+              ...current,
+              [id]: errorMessage,
+            }));
+            failedCount++;
+
+            throw error;
+          }
+        })
+      );
+
+      setErrorMessage(
+        failedCount > 0 ? `${failedCount} image(s) failed to upload.` : ''
+      );
+    },
+    [uploadFile]
+  );
+
   const handleUpload = useCallback(async () => {
     const validSelections = selections.filter(
       (selection) => !selection.validationError
@@ -129,82 +215,7 @@ export function useCloudinaryUpload() {
     setUploadErrors({});
 
     try {
-      const successful: types.CompletedUpload[] = [];
-      let failedCount = 0;
-
-      await Promise.allSettled(
-        validSelections.map(async ({ file, id }) => {
-          const progressInterval = setInterval(() => {
-            setUploadProgress((current) => {
-              const currentProgress = current[id] || 0;
-              if (currentProgress < 90) {
-                return { ...current, [id]: currentProgress + 10 };
-              }
-              return current;
-            });
-          }, 200);
-
-          try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('upload_preset', uploadPreset!);
-
-            const response = await fetch(
-              `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-              {
-                method: 'POST',
-                body: formData,
-              }
-            );
-
-            clearInterval(progressInterval);
-            setUploadProgress((current) => ({ ...current, [id]: 100 }));
-
-            const data = (await response.json()) as types.UploadResponse & {
-              error?: { message: string };
-            };
-
-            if (!response.ok) {
-              throw new Error(
-                data.error?.message ?? 'Upload failed. Please try again.'
-              );
-            }
-
-            const result = { ...data, id };
-
-            setUploadStatuses((current) => ({
-              ...current,
-              [id]: 'success',
-            }));
-            setUploadResults((current) => [...current, result]);
-            successful.push(result);
-
-            return result;
-          } catch (error) {
-            clearInterval(progressInterval);
-
-            const errorMessage =
-              error instanceof Error
-                ? error.message
-                : 'Upload failed. Please try again.';
-            setUploadStatuses((current) => ({
-              ...current,
-              [id]: 'error',
-            }));
-            setUploadErrors((current) => ({
-              ...current,
-              [id]: errorMessage,
-            }));
-            failedCount++;
-
-            throw error;
-          }
-        })
-      );
-
-      setErrorMessage(
-        failedCount > 0 ? `${failedCount} image(s) failed to upload.` : ''
-      );
+      await uploadFiles(validSelections);
     } catch (error) {
       const message =
         error instanceof Error
@@ -214,7 +225,7 @@ export function useCloudinaryUpload() {
     } finally {
       setIsUploading(false);
     }
-  }, [cloudName, selections, uploadPreset]);
+  }, [selections, uploadFiles]);
 
   const handleRetry = useCallback(async () => {
     const failedSelections = selections.filter(
@@ -248,82 +259,7 @@ export function useCloudinaryUpload() {
     });
 
     try {
-      const successful: types.CompletedUpload[] = [];
-      let failedCount = 0;
-
-      await Promise.allSettled(
-        failedSelections.map(async ({ file, id }) => {
-          const progressInterval = setInterval(() => {
-            setUploadProgress((current) => {
-              const currentProgress = current[id] || 0;
-              if (currentProgress < 90) {
-                return { ...current, [id]: currentProgress + 10 };
-              }
-              return current;
-            });
-          }, 200);
-
-          try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('upload_preset', uploadPreset!);
-
-            const response = await fetch(
-              `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-              {
-                method: 'POST',
-                body: formData,
-              }
-            );
-
-            clearInterval(progressInterval);
-            setUploadProgress((current) => ({ ...current, [id]: 100 }));
-
-            const data = (await response.json()) as types.UploadResponse & {
-              error?: { message: string };
-            };
-
-            if (!response.ok) {
-              throw new Error(
-                data.error?.message ?? 'Upload failed. Please try again.'
-              );
-            }
-
-            const result = { ...data, id };
-
-            setUploadStatuses((current) => ({
-              ...current,
-              [id]: 'success',
-            }));
-            setUploadResults((current) => [...current, result]);
-            successful.push(result);
-
-            return result;
-          } catch (error) {
-            clearInterval(progressInterval);
-
-            const errorMessage =
-              error instanceof Error
-                ? error.message
-                : 'Upload failed. Please try again.';
-            setUploadStatuses((current) => ({
-              ...current,
-              [id]: 'error',
-            }));
-            setUploadErrors((current) => ({
-              ...current,
-              [id]: errorMessage,
-            }));
-            failedCount++;
-
-            throw error;
-          }
-        })
-      );
-
-      setErrorMessage(
-        failedCount > 0 ? `${failedCount} image(s) failed to upload.` : ''
-      );
+      await uploadFiles(failedSelections);
     } catch (error) {
       const message =
         error instanceof Error
@@ -333,7 +269,7 @@ export function useCloudinaryUpload() {
     } finally {
       setIsUploading(false);
     }
-  }, [cloudName, selections, uploadPreset, uploadStatuses, uploadResults]);
+  }, [selections, uploadStatuses, uploadResults, uploadFiles]);
 
   const handleReset = useCallback(() => {
     selections.forEach(({ previewUrl }) => {
